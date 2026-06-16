@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz Master AI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0D0F14; --surface:#161820; --surface2:#1e2028;
+      --border:#ffffff12; --border2:#ffffff22;
+      --accent:#6C63FF; --accent-soft:#6C63FF22;
+      --text:#F0F0F5; --text2:#9A9AB0; --text3:#555570;
+      --green:#4ADE80; --red:#FF6B6B; --amber:#F59E0B;
+    }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; min-height:100vh; }
+
+    .screen { display:none; }
+    .screen.active { display:block; }
+
+    /* ── Waiting ── */
+    #screen-waiting { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; gap:14px; padding:24px; }
+    #screen-waiting.active { display:flex; }
+    .wait-icon { width:64px; height:64px; border-radius:16px; background:var(--accent-soft); display:flex; align-items:center; justify-content:center; font-size:28px; }
+    #screen-waiting h2 { font-size:17px; font-weight:700; }
+    #screen-waiting p  { font-size:13px; color:var(--text2); max-width:230px; line-height:1.6; }
+    .step-list { width:100%; max-width:270px; background:var(--surface); border-radius:10px; padding:14px; border:.5px solid var(--border); text-align:left; }
+    .step-item { display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; font-size:12px; color:var(--text2); }
+    .step-item:last-child { margin-bottom:0; }
+    .step-dot { width:20px; height:20px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .step-item strong { color:var(--text); }
+
+    /* ── Config ── */
+    #screen-config { padding:20px; }
+    .cfg-header { text-align:center; margin-bottom:20px; }
+    .cfg-header .icon { font-size:28px; margin-bottom:8px; }
+    .cfg-header h2 { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .cfg-header p  { font-size:12px; color:var(--text2); }
+    .cfg-field { margin-bottom:14px; }
+    .cfg-field label { display:block; font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
+    .cfg-field select { width:100%; padding:10px 12px; background:var(--surface); border:.5px solid var(--border2); border-radius:8px; color:var(--text); font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; outline:none; }
+    .btn-launch { width:100%; padding:13px; background:var(--accent); color:white; border:none; border-radius:8px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; transition:opacity .2s; }
+    .btn-launch:hover { opacity:.88; }
+
+
+    /* ── Timer toggle ── */
+    .timer-row { display:flex; align-items:center; gap:10px; }
+    .tog { width:40px; height:22px; border-radius:11px; background:var(--border2); position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; }
+    .tog::after { content:''; position:absolute; width:16px; height:16px; border-radius:50%; background:white; top:3px; left:3px; transition:transform .2s; }
+    .tog.on { background:var(--accent); }
+    .tog.on::after { transform:translateX(18px); }
+
+    /* ── Topbar ── */
+    .topbar { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:.5px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10; }
+    .tb-logo { font-size:14px; font-weight:700; white-space:nowrap; }
+    .tb-logo sub { font-size:9px; color:var(--accent); font-weight:700; }
+    .prog-wrap { flex:1; }
+    .prog-track { height:3px; background:var(--border2); border-radius:2px; overflow:hidden; }
+    .prog-fill  { height:100%; background:var(--accent); border-radius:2px; transition:width .4s; }
+    .prog-lbl   { font-size:10px; color:var(--text3); margin-top:2px; text-align:right; }
+    .timer-pill { font-size:12px; font-weight:700; padding:3px 9px; border-radius:16px; background:var(--surface); border:.5px solid var(--border2); color:var(--text); min-width:42px; text-align:center; transition:all .3s; }
+    .timer-pill.warn   { background:#3d2a00; color:var(--amber); border-color:var(--amber); }
+    .timer-pill.danger { background:#3d0000; color:var(--red);   border-color:var(--red); }
+
+    /* ── Quiz body ── */
+    .quiz-body { padding:14px; }
+    .q-meta { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .badge { font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px; }
+    .badge-easy   { background:#1a3d1a; color:#4ADE80; }
+    .badge-medium { background:#3d2a00; color:#F59E0B; }
+    .badge-hard   { background:#3d0000; color:#FF6B6B; }
+    .badge-topic  { background:var(--surface2); color:var(--text2); border:.5px solid var(--border); }
+
+    .conf-section { margin-bottom:10px; }
+    .conf-lbl     { font-size:11px; color:var(--text3); margin-bottom:5px; }
+    .conf-row     { display:flex; gap:6px; }
+    .conf-btn     { font-size:11px; font-weight:600; padding:4px 11px; border-radius:20px; cursor:pointer; border:.5px solid var(--border2); background:transparent; color:var(--text2); font-family:inherit; transition:all .15s; }
+    .conf-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .conf-btn.active { background:var(--accent); color:white; border-color:var(--accent); }
+
+    .q-card { background:var(--surface); border:.5px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; }
+    .q-text { font-size:15px; font-weight:500; line-height:1.55; margin-bottom:13px; }
+    .opts   { display:flex; flex-direction:column; gap:7px; }
+    .opt    { width:100%; text-align:left; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--surface2); color:var(--text); font-family:inherit; font-size:13px; cursor:pointer; display:flex; align-items:flex-start; gap:9px; transition:all .15s; }
+    .opt:hover:not(:disabled) { border-color:var(--accent); background:var(--surface); }
+    .opt-key { width:22px; height:22px; border-radius:5px; flex-shrink:0; font-size:11px; font-weight:700; background:var(--bg); border:1px solid var(--border2); color:var(--text2); display:flex; align-items:center; justify-content:center; transition:all .15s; }
+    .opt:hover:not(:disabled) .opt-key { background:var(--accent); color:white; border-color:var(--accent); }
+    .opt.correct { border-color:var(--green); background:#0d2918; }
+    .opt.correct .opt-key { background:var(--green); color:#0a1f12; border-color:var(--green); }
+    .opt.wrong   { border-color:var(--red); background:#2a0d0d; }
+    .opt.wrong .opt-key { background:var(--red); color:white; border-color:var(--red); }
+    .opt:disabled { cursor:default; }
+
+    .expl      { margin-top:10px; padding:10px 12px; background:var(--bg); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; font-size:12px; color:var(--text2); line-height:1.6; display:none; }
+    .expl.show { display:block; }
+    .expl strong { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--accent); margin-bottom:4px; }
+
+    .btn-next      { width:100%; padding:11px; background:var(--accent); color:white; border:none; border-radius:8px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; display:none; margin-top:8px; }
+    .btn-next:hover { opacity:.88; }
+    .btn-next.show { display:block; }
+
+    /* ── Results ── */
+    #screen-results { padding:14px; }
+    .score-hero { text-align:center; padding:16px 0 14px; }
+    .score-ring { width:84px; height:84px; border-radius:50%; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; border:4px solid var(--accent); color:var(--accent); background:var(--surface); }
+    .score-hero h2 { font-size:18px; font-weight:700; }
+    .score-hero p  { font-size:13px; color:var(--text2); margin-top:2px; }
+    .stats-row { display:flex; gap:8px; margin:10px 0; }
+    .stat      { flex:1; background:var(--surface); border-radius:8px; padding:9px; text-align:center; }
+    .stat .val { font-size:19px; font-weight:700; }
+    .stat .lbl { font-size:10px; color:var(--text3); margin-top:2px; }
+    .sec-head  { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 7px; }
+    .diff-row  { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:.5px solid var(--border); }
+    .diff-row:last-child { border:none; }
+    .diff-bar  { flex:1; height:5px; background:var(--border2); border-radius:3px; overflow:hidden; }
+    .diff-bar-fill { height:100%; border-radius:3px; }
+    .diff-score { font-size:12px; color:var(--text2); min-width:34px; text-align:right; }
+    .topic-row { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--surface); border-radius:7px; margin-bottom:5px; font-size:13px; }
+    .t-name    { color:var(--text2); flex:1; margin-right:8px; }
+    .t-score   { font-weight:700; }
+    .t-score.weak { color:var(--red); }
+    .t-score.ok   { color:var(--amber); }
+    .t-score.good { color:var(--green); }
+    .weak-banner { padding:10px 12px; border-radius:8px; background:#2a0d0d; border-left:3px solid var(--red); font-size:12px; color:#ffaaaa; margin:8px 0; }
+    .weak-banner strong { display:block; font-size:10px; color:var(--red); margin-bottom:3px; text-transform:uppercase; }
+    .history-row  { display:flex; align-items:center; gap:8px; padding:7px 9px; background:var(--surface); border-radius:7px; margin-bottom:5px; font-size:12px; }
+    .history-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .history-label { flex:1; color:var(--text2); }
+    .history-score { font-weight:700; }
+    .lucky-pill { font-size:11px; padding:3px 10px; border-radius:12px; background:#3d2a00; color:var(--amber); display:inline-block; margin-bottom:10px; }
+    .review-card { background:var(--surface); border-radius:8px; padding:11px; margin-bottom:7px; font-size:12px; }
+    .rv-q    { font-weight:600; color:var(--text); margin-bottom:6px; line-height:1.4; }
+    .rv-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:5px; }
+    .rv-pill { font-size:11px; padding:2px 9px; border-radius:12px; }
+    .rv-wrong   { background:#2a0d0d; color:var(--red); }
+    .rv-correct { background:#0d2918; color:var(--green); }
+    .rv-exp { font-size:11px; color:var(--text2); line-height:1.5; padding-top:5px; border-top:.5px solid var(--border); }
+    .actions { display:flex; gap:7px; margin-top:14px; padding-bottom:20px; }
+    .act-btn { flex:1; padding:9px 5px; background:var(--surface); color:var(--text2); border:.5px solid var(--border2); border-radius:8px; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition:all .15s; }
+    .act-btn:hover { background:var(--surface2); color:var(--text); }
+    .act-btn.primary { background:var(--accent); color:white; border-color:var(--accent); }
+    .act-btn.primary:hover { opacity:.88; }
+  </style>
+</head>
+<body>
+
+  <!-- WAITING -->
+  <div id="screen-waiting" class="screen active">
+    <div class="wait-icon">&#9889;</div>
+    <h2>Quiz Master AI</h2>
+    <p>Go to Claude.ai, ChatGPT, or Gemini and ask for MCQs from your notes.</p>
+    <div class="step-list">
+      <div class="step-item"><div class="step-dot">1</div><p>Ask any AI: <strong>"Give me 20 MCQs on [topic]"</strong></p></div>
+      <div class="step-item"><div class="step-dot">2</div><p>Click <strong>&#9889; Launch Quiz</strong> below the response</p></div>
+      <div class="step-item"><div class="step-dot">3</div><p>Click the <strong>toolbar icon</strong> to open this panel</p></div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div id="screen-config" class="screen">
+    <div class="cfg-header">
+      <div class="icon">&#9889;</div>
+      <h2>Quiz Ready!</h2>
+      <p id="cfg-total-label">Questions loaded</p>
+    </div>
+    <div class="cfg-field">
+      <label>How many questions?</label>
+      <select id="cfg-count"></select>
+    </div>
+    <div class="cfg-field">
+      <label>Difficulty filter</label>
+      <select id="cfg-diff"></select>
+    </div>
+    <div class="cfg-field">
+      <label>Timer per question</label>
+      <div class="timer-row">
+        <div class="tog" id="cfg-timer-toggle"></div>
+        <span id="cfg-timer-label" style="font-size:13px;color:var(--text2)">Off</span>
+        <select id="cfg-timer-secs" style="display:none;margin-left:8px;padding:6px 10px;background:var(--surface);border:.5px solid var(--border2);border-radius:7px;color:var(--text);font-family:inherit;font-size:13px;outline:none;">
+          <option value="30">30 sec</option>
+          <option value="45" selected>45 sec</option>
+          <option value="60">60 sec</option>
+          <option value="90">90 sec</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-launch" id="btn-start-quiz">Begin Quiz &#8594;</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="screen-quiz" class="screen">
+    <div class="topbar">
+      <div class="tb-logo">Quiz<sub>AI</sub></div>
+      <div class="prog-wrap">
+        <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+        <div class="prog-lbl" id="q-label">1 / 10</div>
+      </div>
+      <div class="timer-pill" id="timer-pill" style="display:none">--</div>
+    </div>
+    <div class="quiz-body">
+      <div class="q-meta" id="q-meta"></div>
+      <div class="conf-section">
+        <div class="conf-lbl">Your confidence:</div>
+        <div class="conf-row">
+          <button class="conf-btn" data-conf="sure">Sure</button>
+          <button class="conf-btn" data-conf="unsure">Unsure</button>
+          <button class="conf-btn" data-conf="guess">Guessing</button>
+        </div>
+      </div>
+      <div class="q-card">
+        <div class="q-text" id="q-text"></div>
+        <div class="opts" id="opts"></div>
+        <div class="expl" id="expl"><strong>Explanation</strong><span id="expl-text"></span></div>
+      </div>
+      <button class="btn-next" id="btn-next">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="screen-results" class="screen">
+    <div class="score-hero">
+      <div class="score-ring" id="score-ring">0%</div>
+      <h2 id="res-headline"></h2>
+      <p id="res-sub"></p>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="val" id="st-correct" style="color:var(--green)">0</div><div class="lbl">Correct</div></div>
+      <div class="stat"><div class="val" id="st-wrong"   style="color:var(--red)">0</div><div class="lbl">Wrong</div></div>
+      <div class="stat"><div class="val" id="st-time">--</div><div class="lbl">Avg time</div></div>
+    </div>
+    <div id="lucky-box"></div>
+    <div class="sec-head">By Difficulty</div>
+    <div id="diff-breakdown"></div>
+    <div id="weak-banner"></div>
+    <div class="sec-head">By Topic</div>
+    <div id="topic-breakdown"></div>
+    <div class="sec-head">Progress History</div>
+    <div id="history-list"></div>
+    <div class="sec-head">Review Wrong Answers</div>
+    <div id="review-list"></div>
+    <div class="actions">
+      <button class="act-btn primary" id="btn-retake">&#8634; Retake</button>
+      <button class="act-btn"         id="btn-pdf">&#8595; PDF</button>
+      <button class="act-btn"         id="btn-new">+ New</button>
+    </div>
+  </div>
+
+  <script src="jspdf.umd.min.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+.qm-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #6C63FF44;
+  background: linear-gradient(135deg, #6C63FF08, #6C63FF18);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.qm-detected-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9b96ff;
+  letter-spacing: 0.3px;
+}
+
+.qm-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #6C63FF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  width: fit-content;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.qm-launch-btn:hover:not(:disabled) { opacity: 0.88; }
+.qm-launch-btn:active:not(:disabled) { transform: scale(0.98); }
+.qm-launch-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.qm-icon { font-size: 14px; }
+
+.qm-status {
+  font-size: 11px;
+  color: #aaa;
+  min-height: 14px;
+}
+
+@media (prefers-color-scheme: light) {
+  .qm-btn-wrap { border-color: #6C63FF55; background: linear-gradient(135deg, #6C63FF0a, #6C63FF1a); }
+  .qm-status { color: #666; }
+}
